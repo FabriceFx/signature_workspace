@@ -1,0 +1,452 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+<script>
+    let currentUserData = {};
+    let templates = [];
+    let currentTemplate = null;
+    let currentTemplateHtml = "";
+    let pendingContent = null;
+
+    // Helpers
+    // Helpers
+    const DEFAULT_LOGO_URL = (typeof SERVER_DATA !== 'undefined') ? SERVER_DATA.defaultLogoUrl : "";
+    const isAdminUser = (typeof SERVER_DATA !== 'undefined') ? SERVER_DATA.isAdmin : false;
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', function () {
+        M.AutoInit(); // Materialize Auto Init
+
+        // Explicit Init for specific interactions if needed
+        // var elems = document.querySelectorAll('select');
+        // M.FormSelect.init(elems, {});
+
+        // FIX: Allow TinyMCE dialogs to receive focus when inside a Materialize modal
+        document.addEventListener('focus', function (e) {
+            if (e.target.closest('.tox-tinymce-aux, .moxman-window, .tam-assetmanager-root') !== null) {
+                e.stopImmediatePropagation();
+            }
+        }, true);
+    });
+
+    window.onload = function () {
+        // Show loader
+        document.getElementById('loading-overlay').style.display = 'flex';
+
+        google.script.run
+            .withSuccessHandler(onTemplatesLoaded)
+            .withFailureHandler(onLoadingError)
+            .getTemplates();
+
+        google.script.run
+            .withSuccessHandler(onUserLoaded)
+            .withFailureHandler(onLoadingError)
+            .getUserProfile();
+    };
+
+    function onLoadingError(error) {
+        console.error("Erreur chargement:", error);
+        document.getElementById('loading-overlay').style.display = 'none';
+        M.toast({ html: "Erreur de chargement: " + error.message, classes: 'red rounded', displayLength: 8000 });
+
+        // Affiche l'erreur en gros si tout plante
+        const preview = document.getElementById('signature-preview');
+        if (preview) {
+            preview.innerHTML = `<div style="color:red; padding:20px; text-align:center;">
+                <h5>Une erreur est survenue</h5>
+                <p>${error.message}</p>
+                <small>Verifiez que vous avez accepté les permissions (DriveApp).</small>
+             </div>`;
+        }
+    }
+
+    function updateMaterializeFields() {
+        M.updateTextFields(); // Update floating labels
+        M.FormSelect.init(document.querySelectorAll('select')); // Re-init selects
+    }
+
+    // --- LOGIC ---
+
+    function onTemplatesLoaded(data) {
+        templates = Array.isArray(data) ? data : [];
+        const select = document.getElementById('template-select');
+        const oldValue = select.value;
+
+        select.innerHTML = '<option value="" disabled selected>Choisir un modèle...</option>';
+
+        templates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.text = t.name;
+            select.appendChild(opt);
+        });
+
+        if (oldValue && templates.find(t => String(t.id) === String(oldValue))) {
+            select.value = oldValue;
+            onTemplateChange();
+        } else {
+            currentTemplate = null;
+            currentTemplateHtml = "";
+            disabledApplyButton(true);
+            document.getElementById('signature-preview').innerHTML =
+                "<em style='color:#ccc'>Veuillez sélectionner un modèle à gauche.</em>";
+        }
+
+        updateMaterializeFields();
+        syncAdminButtons();
+    }
+
+    function onUserLoaded(user) {
+        currentUserData = user || {};
+        document.getElementById('user-welcome').textContent = currentUserData.email || "";
+        document.getElementById('loading-overlay').style.display = 'none';
+
+        const fields = {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            title: user.title,
+            company: user.company,
+            costCenter: user.costCenter,
+            department: user.department,
+            email: user.email,
+            mobile: user.mobile,
+            phone: user.phone,
+            address: user.address
+        };
+
+        for (const [key, val] of Object.entries(fields)) {
+            const el = document.getElementById('inp-' + key);
+            if (el) el.value = val || "";
+        }
+
+        updateMaterializeFields();
+    }
+
+    function syncAdminButtons() {
+        if (!isAdminUser) return;
+        const hasSelection = !!document.getElementById('template-select').value;
+
+        const btns = ['btn-edit', 'btn-del', 'btn-dup'];
+        btns.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                if (hasSelection) btn.removeAttribute('disabled');
+                else btn.setAttribute('disabled', 'disabled');
+            }
+        });
+    }
+
+    function onTemplateChange() {
+        const select = document.getElementById('template-select');
+        const id = select.value;
+        const tpl = templates.find(t => String(t.id) === String(id));
+
+        currentTemplate = tpl || null;
+
+        if (tpl) {
+            currentTemplateHtml = tpl.html || "";
+            updatePreviewLive();
+            disabledApplyButton(false);
+        } else {
+            currentTemplateHtml = "";
+            disabledApplyButton(true);
+            document.getElementById('signature-preview').innerHTML =
+                "<em style='color:#ccc'>Veuillez sélectionner un modèle à gauche.</em>";
+        }
+
+        syncAdminButtons();
+    }
+
+    function disabledApplyButton(disabled) {
+        const btn = document.getElementById('btn-apply');
+        if (disabled) btn.classList.add('disabled');
+        else btn.classList.remove('disabled');
+    }
+
+    function updatePreviewLive() {
+        if (!currentTemplateHtml) return;
+
+        const liveData = {
+            firstName: document.getElementById('inp-firstName').value,
+            lastName: document.getElementById('inp-lastName').value,
+            title: document.getElementById('inp-title').value,
+            department: document.getElementById('inp-department').value,
+            company: document.getElementById('inp-company').value,
+            costCenter: document.getElementById('inp-costCenter').value,
+            email: document.getElementById('inp-email').value,
+            mobile: document.getElementById('inp-mobile').value,
+            phone: document.getElementById('inp-phone').value,
+            address: document.getElementById('inp-address').value,
+            logoUrl: (currentTemplate?.logoUrl || currentUserData.logoUrl || DEFAULT_LOGO_URL)
+        };
+
+        const bannerUrl = (document.getElementById('inp-banner').value || "").trim();
+        let finalHtml = currentTemplateHtml;
+
+        try {
+            finalHtml = finalHtml.replace(/\$\{userData\.(\w+)\}/g, (match, key) => {
+                return liveData[key] || "";
+            });
+
+            if (bannerUrl) {
+                finalHtml += `<br><div style="margin-top:10px;"><img src="${bannerUrl}" style="max-width:100%; height:auto;"></div>`;
+            }
+
+            document.getElementById('signature-preview').innerHTML = finalHtml;
+        } catch (e) {
+            console.error("Erreur template", e);
+        }
+    }
+
+    function applySignature() {
+        const btn = document.getElementById('btn-apply');
+        if (btn.classList.contains('disabled')) return;
+
+        const htmlContent = document.getElementById('signature-preview').innerHTML;
+        const originalIcon = btn.querySelector('i').innerText;
+
+        // Loading state
+        btn.classList.add('disabled');
+        btn.querySelector('i').innerText = 'hourglass_empty';
+        M.toast({ html: 'Application de la signature en cours...' });
+
+        console.log("Calling updateSignature on server...");
+        google.script.run
+            .withSuccessHandler(msg => {
+                console.log("updateSignature SUCCESS: ", msg);
+                M.toast({ html: msg, classes: 'green' });
+                btn.querySelector('i').innerText = 'check';
+                setTimeout(() => {
+                    btn.querySelector('i').innerText = originalIcon;
+                    btn.classList.remove('disabled');
+                }, 2000);
+            })
+            .withFailureHandler(err => {
+                console.error("updateSignature FAILED: ", err);
+                M.toast({ html: "Erreur: " + err, classes: 'red' });
+                btn.querySelector('i').innerText = originalIcon;
+                btn.classList.remove('disabled');
+            })
+            .updateSignature(htmlContent);
+    }
+
+    // --- ADMIN / EDIT MODAL ---
+
+    function openAdminEdit(mode) {
+        let htmlToLoad = "";
+        const modalElem = document.getElementById('modal-admin');
+        const instance = M.Modal.getInstance(modalElem);
+
+        if (mode === 'EDIT') {
+            const selectVal = document.getElementById('template-select').value;
+            if (!selectVal) return M.toast({ html: "Veuillez sélectionner un modèle." });
+
+            const tpl = templates.find(t => String(t.id) === String(selectVal));
+            htmlToLoad = tpl ? hydrateHtmlForEditor(tpl.html || "") : "";
+
+            document.getElementById('edit-id').value = tpl.id;
+            document.getElementById('edit-name').value = tpl.name || "";
+            document.getElementById('edit-logoUrl').value = tpl.logoUrl || DEFAULT_LOGO_URL;
+
+        } else {
+            // NEW
+            htmlToLoad = "";
+            document.getElementById('edit-id').value = "";
+            document.getElementById('edit-name').value = "";
+            document.getElementById('edit-logoUrl').value = DEFAULT_LOGO_URL;
+        }
+
+        M.updateTextFields(); // Update labels for modal inputs
+
+        instance.open();
+
+        const editor = tinymce.get('edit-html');
+        if (editor) editor.setContent(htmlToLoad);
+        else {
+            pendingContent = htmlToLoad;
+            initEditor();
+        }
+    }
+
+    function saveTemplateToSheet() {
+        const id = document.getElementById('edit-id').value;
+        const name = (document.getElementById('edit-name').value || "").trim();
+        const logoUrlInput = (document.getElementById('edit-logoUrl').value || "").trim();
+
+        const editor = tinymce.get('edit-html');
+        let html = editor ? editor.getContent() : pendingContent;
+
+        if (!name || !html) return M.toast({ html: "Nom et HTML requis.", classes: 'orange' });
+
+        html = dehydrateHtmlFromEditor(html);
+        const logoUrl = logoUrlInput || "";
+
+        const btn = document.getElementById('btn-save-modal');
+        btn.classList.add('disabled');
+        btn.innerText = "Sauvegarde...";
+
+        google.script.run
+            .withSuccessHandler(() => {
+                console.log("saveTemplateToSheet SUCCESS");
+                M.toast({ html: "Sauvegarde réussie !", classes: 'green' });
+
+                try {
+                    const instance = M.Modal.getInstance(document.getElementById('modal-admin'));
+                    instance.close();
+                    console.log("Modal closed");
+                } catch (e) {
+                    console.error("Error closing modal", e);
+                }
+
+                console.log("Reloading templates...");
+                google.script.run
+                    .withSuccessHandler(onTemplatesLoaded)
+                    .withFailureHandler(err => console.error("Error reloading templates", err))
+                    .getTemplates();
+
+                btn.innerText = "Enregistrer";
+                btn.classList.remove('disabled');
+            })
+            .withFailureHandler((err) => {
+                console.error("saveTemplateToSheet FAILED", err);
+                M.toast({ html: "Erreur: " + err, classes: 'red' });
+                btn.innerText = "Enregistrer";
+                btn.classList.remove('disabled');
+            })
+            .saveTemplate(id, name, html, logoUrl);
+    }
+
+    function deleteCurrentTemplate() {
+        const id = document.getElementById('template-select').value;
+        if (!id) return;
+
+        if (confirm("Supprimer définitivement ce modèle ?")) {
+            google.script.run
+                .withSuccessHandler(() => {
+                    google.script.run.withSuccessHandler(onTemplatesLoaded).getTemplates();
+                    M.toast({ html: "Modèle supprimé.", classes: 'grey' });
+
+                    document.getElementById('signature-preview').innerHTML = "<em style='color:#ccc'>Modèle supprimé.</em>";
+                    currentTemplate = null;
+                    currentTemplateHtml = "";
+                    disabledApplyButton(true);
+                    syncAdminButtons();
+                })
+                .withFailureHandler(err => M.toast({ html: "Erreur: " + err, classes: 'red' }))
+                .deleteTemplate(id);
+        }
+    }
+
+    function duplicateCurrentTemplate() {
+        const selectVal = document.getElementById('template-select').value;
+        if (!selectVal) return;
+
+        const tpl = templates.find(t => String(t.id) === String(selectVal));
+        if (!tpl) return;
+
+        const newName = makeCopyName(tpl.name);
+
+        document.getElementById('edit-id').value = "";
+        document.getElementById('edit-name').value = newName;
+        document.getElementById('edit-logoUrl').value = (tpl.logoUrl || DEFAULT_LOGO_URL);
+
+        // Open modal
+        const instance = M.Modal.getInstance(document.getElementById('modal-admin'));
+        M.updateTextFields();
+        instance.open();
+
+        const editor = tinymce.get('edit-html');
+        const hydrated = hydrateHtmlForEditor(tpl.html || "");
+        if (editor) editor.setContent(hydrated);
+        else {
+            pendingContent = hydrated;
+            initEditor();
+        }
+    }
+
+    // --- UTILS ---
+    function makeCopyName(baseName) {
+        const prefix = "Copie - ";
+        const clean = (baseName || "Modèle").replace(/^Copie\s*-\s*/i, '').trim();
+        const candidate = `${prefix}${clean}`;
+
+        const existing = new Set(templates.map(t => (t.name || "").toLowerCase().trim()));
+        if (!existing.has(candidate.toLowerCase())) return candidate;
+
+        let n = 2;
+        while (existing.has(`${candidate} (${n})`.toLowerCase())) n++;
+        return `${candidate} (${n})`;
+    }
+
+    function resolveLogoForEditor() {
+        const inputVal = (document.getElementById('edit-logoUrl')?.value || "").trim();
+        return inputVal || currentTemplate?.logoUrl || DEFAULT_LOGO_URL;
+    }
+
+    function hydrateHtmlForEditor(rawHtml) {
+        const url = resolveLogoForEditor();
+        return String(rawHtml || "").replaceAll('${userData.logoUrl}', url);
+    }
+
+    function dehydrateHtmlFromEditor(editedHtml) {
+        const url = resolveLogoForEditor();
+        return String(editedHtml || "").replaceAll(url, '${userData.logoUrl}');
+    }
+
+    // Re-hydrate logic for TinyMCE when logo url changes in modal
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'edit-logoUrl') {
+            const editor = tinymce.get('edit-html');
+            if (!editor) return;
+            const content = editor.getContent();
+            editor.setContent(hydrateHtmlForEditor(content));
+        }
+    });
+
+    // TinyMCE Init
+    const APPSCRIPT_VARS = [
+        { text: 'Prénom', value: '${userData.firstName}' },
+        { text: 'Nom', value: '${userData.lastName}' },
+        { text: 'Fonction', value: '${userData.title}' },
+        { text: 'Service', value: '${userData.department}' },
+        { text: 'Société', value: '${userData.company}' },
+        { text: 'Centre de coût', value: '${userData.costCenter}' },
+        { text: 'Email', value: '${userData.email}' },
+        { text: 'Mobile', value: '${userData.mobile}' },
+        { text: 'Téléphone', value: '${userData.phone}' },
+        { text: 'Adresse', value: '${userData.address}' },
+        { text: 'Logo URL', value: '${userData.logoUrl}' }
+    ];
+
+    function initEditor() {
+        if (tinymce.get('edit-html')) return;
+
+        tinymce.init({
+            selector: '#edit-html',
+            height: 480,
+            menubar: false,
+            plugins: 'code table image link lists',
+            toolbar: 'undo redo | blocks | fontfamily fontsize | bold italic forecolor | alignleft aligncenter alignright | table | link image | code | insertVariable',
+            font_family_formats: 'Sans Serif=sans-serif;Serif=serif;Fixed Width=monospace;Wide=Arial Black,Arial,Gadget,sans-serif;Narrow=Arial Narrow,Arial,sans-serif;Comic Sans MS=Comic Sans MS,cursive;Garamond=Garamond,serif;Georgia=Georgia,serif;Tahoma=Tahoma,Geneva,sans-serif;Trebuchet MS=Trebuchet MS,Helvetica,sans-serif;Verdana=Verdana,Geneva,sans-serif',
+            content_style: "body { font-family: 'Roboto', sans-serif; font-size: 14px; }",
+            init_instance_callback: function (editor) {
+                if (pendingContent !== null) {
+                    editor.setContent(pendingContent);
+                    pendingContent = null;
+                }
+            },
+            setup: function (editor) {
+                editor.ui.registry.addMenuButton('insertVariable', {
+                    text: '⚡ Variables',
+                    fetch: function (callback) {
+                        const items = APPSCRIPT_VARS.map(v => ({
+                            type: 'menuitem',
+                            text: v.text,
+                            onAction: () => editor.insertContent(v.value)
+                        }));
+                        callback(items);
+                    }
+                });
+            }
+        });
+    }
+</script>
