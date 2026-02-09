@@ -7,8 +7,7 @@
 // 1. LISTE DES ADMINISTRATEURS
 // Seuls ces emails auront accès aux fonctions de création/modification de modèles.
 const ADMIN_EMAILS = [
-  'admin@example.com', // À REMPLACER PAR L'EMAIL DE L'ADMINISTRATEUR
-  'fabrice@atelier-informatique.com' // Gardé pour vos tests, à retirer avant livraison finale si besoin
+  'admin@example.com' // À REMPLACER PAR L'EMAIL DE L'ADMINISTRATEUR
 ];
 
 // 2. LOGO PAR DÉFAUT
