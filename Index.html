@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html>
+ <head>
+   <base target="_top">
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
+
+
+   <style>
+     :root {
+       --primary: #045973;
+       --primary-dark: #003452;
+       --accent: #E91E63;
+       --bg-light: #f4f6f8;
+       --border: #e0e0e0;
+       --text: #333;
+       --sidebar-width: 380px;
+     }
+
+
+     * { box-sizing: border-box; }
+
+
+     body {
+       font-family: 'Source Sans Pro', sans-serif;
+       background-color: #eef2f5;
+       color: var(--text);
+       margin: 0;
+       height: 100vh;
+       overflow: hidden;
+       display: flex;
+       flex-direction: column;
+     }
+
+
+     header {
+       background: white;
+       height: 60px;
+       display: flex;
+       align-items: center;
+       justify-content: space-between;
+       padding: 0 20px;
+       border-bottom: 1px solid var(--border);
+       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+       z-index: 10;
+     }
+     .brand { font-weight: 700; font-size: 18px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+
+
+     .app-container {
+       display: flex;
+       flex: 1;
+       height: calc(100vh - 60px);
+     }
+
+
+     .sidebar {
+       width: var(--sidebar-width);
+       background: white;
+       border-right: 1px solid var(--border);
+       display: flex;
+       flex-direction: column;
+       overflow-y: auto;
+     }
+
+
+     .sidebar-section {
+       padding: 20px;
+       border-bottom: 1px solid var(--border);
+     }
+
+
+     h3 { margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; color: #888; letter-spacing: 0.5px; }
+
+
+     .template-selector select {
+       width: 100%;
+       padding: 12px;
+       border: 1px solid #ccc;
+       border-radius: 6px;
+       font-size: 14px;
+       background-color: #fff;
+     }
+
+
+     .admin-toolbar {
+       display: flex;
+       gap: 10px;
+       margin-top: 10px;
+     }
+     .btn-icon {
+       flex: 1;
+       padding: 6px;
+       border: 1px solid var(--border);
+       background: #f9f9f9;
+       cursor: pointer;
+       border-radius: 4px;
+       font-size: 12px;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       gap: 5px;
+     }
+     .btn-icon:hover { background: #eee; }
+     .btn-delete { color: #d32f2f; }
+     .btn-icon:disabled { opacity: .55; cursor: not-allowed; }
+
+
+     .form-grid {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
+       gap: 15px;
+     }
+     .form-group { margin-bottom: 15px; }
+     .form-group.full { grid-column: span 2; }
+
+
+     .form-group label {
+       display: block;
+       font-size: 12px;
+       font-weight: 600;
+       color: var(--primary-dark);
+       margin-bottom: 5px;
+     }
+
+
+     .form-group input {
+       width: 100%;
+       padding: 10px;
+       border: 1px solid #ddd;
+       border-radius: 4px;
+       font-size: 14px;
+     }
+     .form-group input:focus {
+       outline: none;
+       border-color: var(--primary);
+       box-shadow: 0 0 0 3px rgba(4, 89, 115, 0.1);
+     }
+     .input-readonly { background: #f9f9f9; color: #888; pointer-events: none; }
+
+
+     .preview-area {
+       flex: 1;
+       background-color: #eef2f5;
+       padding: 40px;
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       overflow-y: auto;
+     }
+
+
+     .email-window {
+       background: white;
+       width: 100%;
+       max-width: 800px;
+       border-radius: 8px;
+       box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+       overflow: hidden;
+       border: 1px solid #dce0e6;
+     }
+
+
+     .email-header {
+       background: #f5f5f5;
+       padding: 10px 20px;
+       border-bottom: 1px solid #e0e0e0;
+       display: flex;
+       gap: 10px;
+     }
+     .dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+     .dot.red { background: #ff5f56; }
+     .dot.yellow { background: #ffbd2e; }
+     .dot.green { background: #27c93f; }
+
+
+     .email-body { padding: 40px; min-height: 300px; }
+     .email-content-placeholder { color: #999; font-size: 14px; margin-bottom: 30px; line-height: 1.5; }
+     .signature-wrapper { border-top: 1px dotted #ccc; padding-top: 20px; }
+
+
+     .action-footer {
+       position: fixed;
+       bottom: 30px;
+       right: 40px;
+       z-index: 100;
+     }
+
+
+     .btn-primary {
+       background-color: var(--accent);
+       color: white;
+       border: none;
+       padding: 15px 30px;
+       border-radius: 50px;
+       font-size: 16px;
+       font-weight: 600;
+       box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+       cursor: pointer;
+       display: flex;
+       align-items: center;
+       gap: 10px;
+       transition: transform 0.2s, box-shadow 0.2s;
+     }
+     .btn-primary:hover {
+       transform: translateY(-2px);
+       box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+     }
+     .btn-primary:disabled {
+       background-color: #ccc;
+       box-shadow: none;
+       cursor: not-allowed;
+     }
+
+
+     /* --- ADMIN MODAL --- */
+     .modal-overlay {
+       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+       background: rgba(0,0,0,0.5); z-index: 2000;
+       display: none; justify-content: center; align-items: center;
+     }
+     .modal-content {
+       background: white; width: 90%; max-width: 900px; height: 90%;
+       border-radius: 8px; display: flex; flex-direction: column;
+       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+     }
+     .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+     .modal-body { flex: 1; padding: 20px; overflow-y: auto; background: #fafafa; }
+     .modal-footer { padding: 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+
+
+     /* Loader */
+     #loading-overlay {
+       position: fixed; top:0; left:0; right:0; bottom:0;
+       background: white; z-index: 9999;
+       display: flex; justify-content: center; align-items: center; flex-direction: column;
+     }
+     .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+
+     /* TinyMCE z-index */
+     .tox-tinymce-aux { z-index: 3000 !important; }
+   </style>
+ </head>
+
+
+ <body>
+   <div id="loading-overlay">
+     <div class="spinner"></div>
+     <p style="margin-top:15px; color:#666;">Chargement de vos données...</p>
+   </div>
+
+
+   <? if (isAdmin) { ?>
+   <div id="admin-modal" class="modal-overlay">
+     <div class="modal-content">
+       <div class="modal-header">
+         <h2 style="margin:0; font-size:20px; color:var(--primary);">Éditeur de Modèle</h2>
+         <button onclick="closeAdminModal()" style="border:none; background:none; cursor:pointer; font-size:20px;">&times;</button>
+       </div>
+
+
+       <div class="modal-body">
+         <input type="hidden" id="edit-id">
+
+
+         <div class="form-group">
+           <label>Nom du modèle</label>
+           <input type="text" id="edit-name" placeholder="Ex: Signature Nutrition - Externe">
+         </div>
+
+
+         <div class="form-group">
+           <label>Logo (URL) (obligatoire)</label>
+           <input type="text" id="edit-logoUrl" placeholder="https://storage.googleapis.com/...png">
+           <div style="font-size:12px;color:#777;margin-top:6px;">
+             Si vide, on applique automatiquement le logo par défaut Cooperl.
+           </div>
+         </div>
+
+
+         <div class="form-group">
+           <label>Design (Utilisez le menu 'Variables' pour insérer les champs dynamiques)</label>
+           <textarea id="edit-html" style="height:400px;"></textarea>
+         </div>
+       </div>
+
+
+       <div class="modal-footer">
+         <button onclick="closeAdminModal()" style="padding:10px 20px; border:1px solid #ccc; background:white; cursor:pointer; border-radius:4px;">Annuler</button>
+         <button onclick="saveTemplateToSheet()" class="btn-primary" style="box-shadow:none; border-radius:4px;">Enregistrer</button>
+       </div>
+     </div>
+   </div>
+   <? } ?>
+
+
+   <header>
+     <div class="brand">
+       <span class="material-icons" style="color:var(--primary)">fingerprint</span>
+       Signature Generator
+     </div>
+     <div style="font-size: 12px; color: #666;" id="user-welcome"></div>
+   </header>
+
+
+   <div class="app-container">
+     <aside class="sidebar">
+       <div class="sidebar-section">
+         <h3>Modèle de signature</h3>
+         <div class="template-selector">
+           <select id="template-select" onchange="onTemplateChange()">
+             <option value="" disabled selected>Choisir un modèle...</option>
+           </select>
+         </div>
+
+
+         <? if (isAdmin) { ?>
+         <div class="admin-toolbar">
+           <button class="btn-icon" id="btn-edit" onclick="openAdminEdit('EDIT')" disabled>
+             <span class="material-icons" style="font-size:16px">edit</span> Modifier
+           </button>
+           <button class="btn-icon" id="btn-dup" onclick="duplicateCurrentTemplate()" disabled>
+             <span class="material-icons" style="font-size:16px">content_copy</span> Dupliquer
+           </button>
+           <button class="btn-icon btn-delete" id="btn-del" onclick="deleteCurrentTemplate()" disabled>
+             <span class="material-icons" style="font-size:16px">delete</span>
+           </button>
+           <button class="btn-icon" onclick="openAdminEdit('NEW')">
+             <span class="material-icons" style="font-size:16px">add</span> Nouveau
+           </button>
+         </div>
+         <? } ?>
+       </div>
+
+
+       <div class="sidebar-section">
+         <h3>Mes informations</h3>
+         <form id="user-form" oninput="updatePreviewLive()">
+           <div class="form-grid">
+             <div class="form-group">
+               <label>Prénom</label>
+               <input type="text" id="inp-firstName" name="firstName">
+             </div>
+             <div class="form-group">
+               <label>Nom</label>
+               <input type="text" id="inp-lastName" name="lastName">
+             </div>
+           </div>
+
+
+           <div class="form-group full">
+             <label>Fonction</label>
+             <input type="text" id="inp-title" name="title">
+           </div>
+
+
+           <div class="form-group full">
+             <label>Société</label>
+             <input type="text" id="inp-company" name="company" placeholder="Ex: Cooperl Arc Atlantique">
+           </div>
+
+
+           <div class="form-group full">
+             <label>Branche</label>
+             <input type="text" id="inp-costCenter" name="costCenter" placeholder="Ex: Nutrition, Viandes...">
+           </div>
+
+
+           <div class="form-group full">
+             <label>Service / Département</label>
+             <input type="text" id="inp-department" name="department">
+           </div>
+
+
+           <div class="form-group full">
+             <label>Email</label>
+             <input type="text" id="inp-email" name="email" class="input-readonly" readonly>
+           </div>
+
+
+           <div class="form-grid">
+             <div class="form-group">
+               <label>Tél. Mobile</label>
+               <input type="text" id="inp-mobile" name="mobile">
+             </div>
+             <div class="form-group">
+               <label>Tél. Bureau</label>
+               <input type="text" id="inp-phone" name="phone">
+             </div>
+           </div>
+
+
+           <div class="form-group full">
+             <label>Adresse</label>
+             <input type="text" id="inp-address" name="address">
+           </div>
+
+
+           <div class="form-group full">
+             <label>Bannière (URL image)</label>
+             <input type="text" id="inp-banner" placeholder="Optionnel : http://..." name="banner">
+           </div>
+         </form>
+       </div>
+     </aside>
+
+
+     <main class="preview-area">
+       <div class="email-window">
+         <div class="email-header">
+           <div class="dot red"></div>
+           <div class="dot yellow"></div>
+           <div class="dot green"></div>
+         </div>
+         <div class="email-body">
+           <div class="email-content-placeholder">
+             Bonjour,<br><br>
+             Voici un aperçu de ce à quoi ressemblera votre nouvelle signature.<br>
+             Les modifications à gauche sont visibles en temps réel ici.
+             <br><br>
+             Cordialement,
+           </div>
+
+
+           <div class="signature-wrapper" id="signature-preview">
+             <em style="color:#ccc">Veuillez sélectionner un modèle à gauche.</em>
+           </div>
+         </div>
+       </div>
+     </main>
+   </div>
+
+
+   <div class="action-footer">
+     <button id="btn-apply" class="btn-primary" onclick="applySignature()" disabled>
+       <span class="material-icons">save_alt</span>
+       Appliquer la signature
+     </button>
+   </div>
+
+
+   <script>
+     const DEFAULT_LOGO_URL = "<?= defaultLogoUrl ?>";
+     const isAdminUser = <?= isAdmin ?>;
+
+
+     let currentUserData = {};
+     let templates = [];
+     let currentTemplate = null;
+     let currentTemplateHtml = "";
+     let pendingContent = null;
+
+
+     // --- Helpers (TinyMCE: affichage logo sans casser le template) ---
+     function resolveLogoForEditor() {
+       const inputVal = (document.getElementById('edit-logoUrl')?.value || "").trim();
+       return inputVal || currentTemplate?.logoUrl || DEFAULT_LOGO_URL;
+     }
+
+
+     function hydrateHtmlForEditor(rawHtml) {
+       const url = resolveLogoForEditor();
+       return String(rawHtml || "").replaceAll('${userData.logoUrl}', url);
+     }
+
+
+     function dehydrateHtmlFromEditor(editedHtml) {
+       const url = resolveLogoForEditor();
+       return String(editedHtml || "").replaceAll(url, '${userData.logoUrl}');
+     }
+
+
+     // --- INITIALISATION ---
+     window.onload = function() {
+       google.script.run.withSuccessHandler(onTemplatesLoaded).getTemplates();
+       google.script.run.withSuccessHandler(onUserLoaded).getUserProfile();
+     };
+
+
+     function onTemplatesLoaded(data) {
+       templates = Array.isArray(data) ? data : [];
+       const select = document.getElementById('template-select');
+       const oldValue = select.value;
+
+
+       select.innerHTML = '<option value="" disabled selected>Choisir un modèle...</option>';
+
+
+       templates.forEach(t => {
+         const opt = document.createElement('option');
+         opt.value = t.id;
+         opt.text = t.name;
+         select.appendChild(opt);
+       });
+
+
+       if (oldValue && templates.find(t => String(t.id) === String(oldValue))) {
+         select.value = oldValue;
+         onTemplateChange();
+       } else {
+         currentTemplate = null;
+         currentTemplateHtml = "";
+         document.getElementById('btn-apply').disabled = true;
+         document.getElementById('signature-preview').innerHTML =
+           "<em style='color:#ccc'>Veuillez sélectionner un modèle à gauche.</em>";
+       }
+
+
+       syncAdminButtons();
+     }
+
+
+     function onUserLoaded(user) {
+       currentUserData = user || {};
+       document.getElementById('user-welcome').textContent = currentUserData.email || "";
+       document.getElementById('loading-overlay').style.display = 'none';
+
+
+       const fields = {
+         firstName: user.firstName,
+         lastName: user.lastName,
+         title: user.title,
+         company: user.company,
+         costCenter: user.costCenter,
+         department: user.department,
+         email: user.email,
+         mobile: user.mobile,
+         phone: user.phone,
+         address: user.address
+       };
+
+
+       for (const [key, val] of Object.entries(fields)) {
+         const el = document.getElementById('inp-' + key);
+         if (el) el.value = val || "";
+       }
+     }
+
+
+     function syncAdminButtons() {
+       if (!isAdminUser) return;
+       const hasSelection = !!document.getElementById('template-select').value;
+       document.getElementById('btn-edit').disabled = !hasSelection;
+       document.getElementById('btn-del').disabled = !hasSelection;
+       document.getElementById('btn-dup').disabled = !hasSelection;
+     }
+
+
+     // --- LOGIQUE PREVIEW ---
+     function onTemplateChange() {
+       const select = document.getElementById('template-select');
+       const id = select.value;
+       const tpl = templates.find(t => String(t.id) === String(id));
+
+
+       currentTemplate = tpl || null;
+
+
+       if (tpl) {
+         currentTemplateHtml = tpl.html || "";
+         updatePreviewLive();
+         document.getElementById('btn-apply').disabled = false;
+       } else {
+         currentTemplateHtml = "";
+         document.getElementById('btn-apply').disabled = true;
+         document.getElementById('signature-preview').innerHTML =
+           "<em style='color:#ccc'>Veuillez sélectionner un modèle à gauche.</em>";
+       }
+
+
+       syncAdminButtons();
+     }
+
+
+     function updatePreviewLive() {
+       if (!currentTemplateHtml) return;
+
+
+       const liveData = {
+         firstName: document.getElementById('inp-firstName').value,
+         lastName: document.getElementById('inp-lastName').value,
+         title: document.getElementById('inp-title').value,
+         department: document.getElementById('inp-department').value,
+         company: document.getElementById('inp-company').value,
+         costCenter: document.getElementById('inp-costCenter').value,
+         email: document.getElementById('inp-email').value,
+         mobile: document.getElementById('inp-mobile').value,
+         phone: document.getElementById('inp-phone').value,
+         address: document.getElementById('inp-address').value,
+         logoUrl: (currentTemplate?.logoUrl || currentUserData.logoUrl || DEFAULT_LOGO_URL)
+       };
+
+
+       const bannerUrl = (document.getElementById('inp-banner').value || "").trim();
+       let finalHtml = currentTemplateHtml;
+
+
+       try {
+         finalHtml = finalHtml.replace(/\$\{userData\.(\w+)\}/g, (match, key) => {
+           return liveData[key] || "";
+         });
+
+
+         if (bannerUrl) {
+           finalHtml += `<br><div style="margin-top:10px;"><img src="${bannerUrl}" style="max-width:100%; height:auto;"></div>`;
+         }
+
+
+         document.getElementById('signature-preview').innerHTML = finalHtml;
+       } catch (e) {
+         console.error("Erreur template", e);
+       }
+     }
+
+
+     function applySignature() {
+       const btn = document.getElementById('btn-apply');
+       const htmlContent = document.getElementById('signature-preview').innerHTML;
+
+
+       const originalText = btn.innerHTML;
+       btn.innerHTML = '<div class="spinner" style="width:20px; height:20px; border-width:2px;"></div>';
+       btn.disabled = true;
+
+
+       google.script.run
+         .withSuccessHandler(msg => {
+           alert(msg);
+           btn.innerHTML = '<span class="material-icons">check</span> Terminé';
+           setTimeout(() => {
+             btn.innerHTML = originalText;
+             btn.disabled = false;
+           }, 2000);
+         })
+         .withFailureHandler(err => {
+           alert("Erreur: " + err);
+           btn.innerHTML = originalText;
+           btn.disabled = false;
+         })
+         .updateSignature(htmlContent);
+     }
+
+
+     // --- LOGIQUE ADMIN (TINYMCE) ---
+     const APPSCRIPT_VARS = [
+       { text: 'Prénom', value: '${userData.firstName}' },
+       { text: 'Nom', value: '${userData.lastName}' },
+       { text: 'Fonction', value: '${userData.title}' },
+       { text: 'Service', value: '${userData.department}' },
+       { text: 'Société', value: '${userData.company}' },
+       { text: 'Branche', value: '${userData.costCenter}' },
+       { text: 'Email', value: '${userData.email}' },
+       { text: 'Mobile', value: '${userData.mobile}' },
+       { text: 'Téléphone', value: '${userData.phone}' },
+       { text: 'Adresse', value: '${userData.address}' },
+       { text: 'Logo URL', value: '${userData.logoUrl}' }
+     ];
+
+
+     function initEditor() {
+       if (tinymce.get('edit-html')) return;
+
+
+       tinymce.init({
+         selector: '#edit-html',
+         height: 400,
+         menubar: false,
+         plugins: 'code table image link lists',
+         toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright | table | link image | code | insertVariable',
+         content_style: "body { font-family: 'Source Sans Pro', sans-serif; font-size: 14px; }",
+
+
+         init_instance_callback: function (editor) {
+           if (pendingContent !== null) {
+             editor.setContent(pendingContent);
+             pendingContent = null;
+           }
+         },
+
+
+         setup: function (editor) {
+           editor.ui.registry.addMenuButton('insertVariable', {
+             text: '⚡ Variables',
+             fetch: function (callback) {
+               const items = APPSCRIPT_VARS.map(v => ({
+                 type: 'menuitem',
+                 text: v.text,
+                 onAction: () => editor.insertContent(v.value)
+               }));
+               callback(items);
+             }
+           });
+         }
+       });
+     }
+
+
+     function openAdminEdit(mode) {
+       let htmlToLoad = "";
+
+
+       if (mode === 'EDIT') {
+         const selectVal = document.getElementById('template-select').value;
+         if (!selectVal) {
+           alert("Veuillez sélectionner un modèle avant de modifier.");
+           return;
+         }
+         const tpl = templates.find(t => String(t.id) === String(selectVal));
+         htmlToLoad = tpl ? hydrateHtmlForEditor(tpl.html || "") : "";
+
+
+         document.getElementById('edit-id').value = tpl.id;
+         document.getElementById('edit-name').value = tpl.name || "";
+         document.getElementById('edit-logoUrl').value = tpl.logoUrl || DEFAULT_LOGO_URL;
+
+
+       } else {
+         htmlToLoad = "";
+         document.getElementById('edit-id').value = "";
+         document.getElementById('edit-name').value = "";
+         document.getElementById('edit-logoUrl').value = DEFAULT_LOGO_URL;
+       }
+
+
+       document.getElementById('admin-modal').style.display = 'flex';
+
+
+       const editor = tinymce.get('edit-html');
+       if (editor) editor.setContent(htmlToLoad);
+       else {
+         pendingContent = htmlToLoad;
+         initEditor();
+       }
+     }
+
+
+     function closeAdminModal() {
+       document.getElementById('admin-modal').style.display = 'none';
+       if (tinymce.get('edit-html')) tinymce.get('edit-html').setContent("");
+     }
+
+
+     function saveTemplateToSheet() {
+       const id = document.getElementById('edit-id').value;
+       const name = (document.getElementById('edit-name').value || "").trim();
+       const logoUrlInput = (document.getElementById('edit-logoUrl').value || "").trim();
+
+
+       const editor = tinymce.get('edit-html');
+       let html = editor ? editor.getContent() : pendingContent;
+
+
+       if (!name || !html) return alert("Nom et HTML requis.");
+
+
+       // Remet le placeholder ${userData.logoUrl} avant sauvegarde
+       html = dehydrateHtmlFromEditor(html);
+
+
+       const logoUrl = logoUrlInput || ""; // serveur applique le fallback si vide
+
+
+       const btn = document.querySelector('#admin-modal .btn-primary');
+       const originalText = btn.innerText;
+       btn.innerText = "Sauvegarde...";
+       btn.disabled = true;
+
+
+       google.script.run
+         .withSuccessHandler(() => {
+           alert("Sauvegarde réussie !");
+           closeAdminModal();
+
+
+           google.script.run.withSuccessHandler(onTemplatesLoaded).getTemplates();
+
+
+           btn.innerText = originalText;
+           btn.disabled = false;
+         })
+         .withFailureHandler((err) => {
+           alert("Erreur: " + err);
+           btn.innerText = originalText;
+           btn.disabled = false;
+         })
+         .saveTemplate(id, name, html, logoUrl);
+     }
+
+
+     function deleteCurrentTemplate() {
+       const id = document.getElementById('template-select').value;
+       if (!id) return;
+
+
+       if (confirm("Supprimer définitivement ce modèle ?")) {
+         google.script.run
+           .withSuccessHandler(() => {
+             google.script.run.withSuccessHandler(onTemplatesLoaded).getTemplates();
+             document.getElementById('signature-preview').innerHTML = "<em style='color:#ccc'>Modèle supprimé.</em>";
+             currentTemplate = null;
+             currentTemplateHtml = "";
+             document.getElementById('btn-apply').disabled = true;
+             syncAdminButtons();
+           })
+           .withFailureHandler(err => alert("Erreur: " + err))
+           .deleteTemplate(id);
+       }
+     }
+
+
+     function duplicateCurrentTemplate() {
+       const selectVal = document.getElementById('template-select').value;
+       if (!selectVal) return;
+
+
+       const tpl = templates.find(t => String(t.id) === String(selectVal));
+       if (!tpl) return;
+
+
+       const newName = makeCopyName(tpl.name);
+
+
+       document.getElementById('edit-id').value = "";
+       document.getElementById('edit-name').value = newName;
+       document.getElementById('edit-logoUrl').value = (tpl.logoUrl || DEFAULT_LOGO_URL);
+
+
+       document.getElementById('admin-modal').style.display = 'flex';
+
+
+       const editor = tinymce.get('edit-html');
+       const hydrated = hydrateHtmlForEditor(tpl.html || "");
+       if (editor) editor.setContent(hydrated);
+       else {
+         pendingContent = hydrated;
+         initEditor();
+       }
+     }
+
+
+     function makeCopyName(baseName) {
+       const prefix = "Copie - ";
+       const clean = (baseName || "Modèle").replace(/^Copie\s*-\s*/i, '').trim();
+       const candidate = `${prefix}${clean}`;
+
+
+       const existing = new Set(templates.map(t => (t.name || "").toLowerCase().trim()));
+       if (!existing.has(candidate.toLowerCase())) return candidate;
+
+
+       let n = 2;
+       while (existing.has(`${candidate} (${n})`.toLowerCase())) n++;
+       return `${candidate} (${n})`;
+     }
+
+
+     // Quand on modifie le champ Logo URL, on "ré-hydrate" le contenu de l'éditeur pour voir le logo
+     document.addEventListener('input', (e) => {
+       if (e.target && e.target.id === 'edit-logoUrl') {
+         const editor = tinymce.get('edit-html');
+         if (!editor) return;
+
+
+         const content = editor.getContent();
+         editor.setContent(hydrateHtmlForEditor(content));
+       }
+     });
+   </script>
+ </body>
+</html>
