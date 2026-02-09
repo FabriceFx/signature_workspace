@@ -118,6 +118,15 @@ function normalizeLogoUrl_(logoUrl) {
 
 
 /**
+ * Sauvegarde la préférence de modèle de l'utilisateur courant
+ */
+function saveUserTemplatePreference(templateId) {
+  const userProps = PropertiesService.getUserProperties();
+  // On stocke l'ID en chaîne de caractères
+  userProps.setProperty('PREFERRED_TEMPLATE_ID', String(templateId));
+}
+
+/**
  * Récupère les données de l'utilisateur via Admin Directory API
  */
 function getUserProfile() {
@@ -138,6 +147,9 @@ function getUserProfile() {
     const workPhone = phones.find(p => p.type === 'work') || {};
     const mobilePhone = phones.find(p => p.type === 'mobile') || {};
 
+    const userProps = PropertiesService.getUserProperties();
+    const preferredId = userProps.getProperty('PREFERRED_TEMPLATE_ID') || "";
+
     return {
       firstName: user.name?.givenName || "",
       lastName: user.name?.familyName || "",
@@ -155,7 +167,10 @@ function getUserProfile() {
       email: user.primaryEmail,
 
       // Fallback logo : on renvoie le logo par défaut
-      logoUrl: DEFAULT_LOGO_URL
+      logoUrl: DEFAULT_LOGO_URL,
+      
+      // Préférence utilisateur (ID du modèle)
+      preferredTemplateId: preferredId
     };
 
   } catch (e) {

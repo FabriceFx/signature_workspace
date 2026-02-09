@@ -56,18 +56,23 @@
 
   <!-- SIDEBAR -->
   <ul id="slide-out" class="sidenav sidenav-fixed">
-    <li class="logo-container bg-white" style="padding: 20px;">
+    <li class="logo-container bg-white"
+      style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
       <h5 class="!flex !items-center !text-[#045973] !text-2xl !font-bold !m-0">
         <i class="material-icons mr-2">fingerprint</i> Signature
       </h5>
+      <div class="lang-switcher">
+        <span class="lang-btn active" onclick="setLanguage('fr')">FR</span>
+        <span class="lang-btn" onclick="setLanguage('en')">EN</span>
+      </div>
     </li>
     <li class="sidebar-section">
-      <h5 class="!text-[#045973] !text-lg !font-semibold !mb-4">Modèle</h5>
+      <h5 class="!text-[#045973] !text-lg !font-semibold !mb-4" data-i18n="sidebar_template">Modèle</h5>
       <div class="input-field">
         <select id="template-select" onchange="onTemplateChange()">
-          <option value="" disabled selected>Chargement...</option>
+          <option value="" disabled selected data-i18n="loading">Chargement...</option>
         </select>
-        <label>Choix du modèle</label>
+        <label data-i18n="sidebar_choice">Choix du modèle</label>
       </div>
 
       <? if (isAdmin) { ?>
@@ -93,77 +98,77 @@
     </li>
 
     <li class="sidebar-section">
-      <h5 class="!text-[#045973] !text-lg !font-semibold !mb-4">Mes Informations</h5>
+      <h5 class="!text-[#045973] !text-lg !font-semibold !mb-4" data-i18n="sidebar_info">Mes Informations</h5>
       <form id="user-form" oninput="updatePreviewLive()">
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s6">
             <input id="inp-firstName" type="text" class="validate">
-            <label for="inp-firstName">Prénom</label>
+            <label for="inp-firstName" data-i18n="lbl_firstname">Prénom</label>
           </div>
           <div class="input-field col s6">
             <input id="inp-lastName" type="text" class="validate">
-            <label for="inp-lastName">Nom</label>
+            <label for="inp-lastName" data-i18n="lbl_lastname">Nom</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-title" type="text" class="validate">
-            <label for="inp-title">Fonction</label>
+            <label for="inp-title" data-i18n="lbl_job">Fonction</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-company" type="text" placeholder="Ex: Ma Société" class="validate">
-            <label for="inp-company">Société</label>
+            <label for="inp-company" data-i18n="lbl_company">Société</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-costCenter" type="text" placeholder="Ex: Centre de coût" class="validate">
-            <label for="inp-costCenter">Centre de coût</label>
+            <label for="inp-costCenter" data-i18n="lbl_cost_center">Centre de coût</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-department" type="text" class="validate">
-            <label for="inp-department">Service</label>
+            <label for="inp-department" data-i18n="lbl_department">Service</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s6">
             <input id="inp-mobile" type="text" class="validate">
-            <label for="inp-mobile">Mobile</label>
+            <label for="inp-mobile" data-i18n="lbl_mobile">Mobile</label>
           </div>
           <div class="input-field col s6">
             <input id="inp-phone" type="text" class="validate">
-            <label for="inp-phone">Fixe</label>
+            <label for="inp-phone" data-i18n="lbl_phone">Fixe</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-email" type="text" readonly disabled style="color:#999">
-            <label for="inp-email">Email</label>
+            <label for="inp-email" data-i18n="lbl_email">Email</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-address" type="text" class="validate">
-            <label for="inp-address">Adresse</label>
+            <label for="inp-address" data-i18n="lbl_address">Adresse</label>
           </div>
         </div>
 
         <div class="row" style="margin-bottom: 0;">
           <div class="input-field col s12">
             <input id="inp-banner" type="text" class="validate" placeholder="https://...">
-            <label for="inp-banner">Bannière (URL optionnelle)</label>
+            <label for="inp-banner" data-i18n="lbl_banner">Bannière (URL optionnelle)</label>
           </div>
         </div>
 
@@ -175,11 +180,13 @@
   <main>
     <div class="container" style="margin-bottom: 20px;">
       <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-        <h5 class="!text-[#045973] !text-lg !font-semibold !mb-4">Comment ça marche ?</h5>
+        <h5 class="!text-[#045973] !text-lg !font-semibold !mb-4" data-i18n="how_title">Comment ça marche ?</h5>
         <ol class="text-slate-600 text-sm space-y-2 list-decimal pl-5">
-          <li>Sélectionnez un <b class="text-[#045973]">modèle</b> dans la barre latérale.</li>
-          <li>Vérifiez et corrigez vos <b class="text-[#045973]">informations</b> si nécessaire.</li>
-          <li>Cliquez sur le bouton <b><i class="tiny material-icons align-middle text-[#E91E63]">save_alt</i></b> en
+          <li data-i18n="how_step1">Sélectionnez un <b class="text-[#045973]">modèle</b> dans la barre latérale.</li>
+          <li data-i18n="how_step2">Vérifiez et corrigez vos <b class="text-[#045973]">informations</b> si nécessaire.
+          </li>
+          <li data-i18n="how_step3">Cliquez sur le bouton <b><i
+                class="tiny material-icons align-middle text-[#E91E63]">save_alt</i></b> en
             bas
             à droite pour appliquer la signature.</li>
         </ol>
@@ -216,14 +223,14 @@
           class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 text-slate-500 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200 border border-transparent transition-all duration-300 text-xs font-medium group"
           style="text-decoration:none;">
           <i class="fas fa-mug-hot group-hover:animate-bounce"></i>
-          <span>Offrez-moi un café</span>
+          <span data-i18n="footer_coffee">Offrez-moi un café</span>
         </a>
       </div>
 
       <p class="text-slate-500 text-sm">
         ©
-        <script>document.write(new Date().getFullYear())</script> <strong>Fabrice Faucheux</strong> — Tous droits
-        réservés
+        <script>document.write(new Date().getFullYear())</script> <strong>Fabrice Faucheux</strong> — <span
+          data-i18n="footer_rights">Tous droits réservés</span>
       </p>
 
       <div class="mt-4 flex justify-center gap-4">
