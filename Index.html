@@ -75,6 +75,15 @@
         <label data-i18n="sidebar_choice">Choix du modèle</label>
       </div>
 
+      <!-- Auto Update Switch -->
+      <div class="switch" style="margin-top: 20px;">
+        <label>
+          <input type="checkbox" id="switch-auto-update" onchange="onAutoUpdateChange()">
+          <span class="lever"></span>
+          <span class="text-slate-600 text-sm" data-i18n="lbl_auto_update">Mise à jour auto (Nuit)</span>
+        </label>
+      </div>
+
       <? if (isAdmin) { ?>
       <div class="admin-actions center-align">
         <button class="btn-small waves-effect waves-light white grey-text text-darken-2 btn-small-icon" id="btn-edit"
@@ -169,6 +178,13 @@
           <div class="input-field col s12">
             <input id="inp-banner" type="text" class="validate" placeholder="https://...">
             <label for="inp-banner" data-i18n="lbl_banner">Bannière (URL optionnelle)</label>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom: 0;">
+          <div class="input-field col s12">
+            <input id="inp-bannerLink" type="text" class="validate" placeholder="https://...">
+            <label for="inp-bannerLink" data-i18n="lbl_banner_link">Lien de la bannière (Optionnel)</label>
           </div>
         </div>
 

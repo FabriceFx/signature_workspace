@@ -48,7 +48,11 @@
             admin_new: "Nouveau",
             admin_edit: "Modifier",
             admin_dup: "Dupliquer",
-            admin_del: "Supprimer"
+            admin_edit: "Modifier",
+            admin_dup: "Dupliquer",
+            admin_del: "Supprimer",
+            btn_force_update: "Mettre à jour maintenant",
+            lbl_banner_link: "Lien de la bannière (Optionnel)"
         },
         en: {
             // Sidebar
@@ -67,6 +71,7 @@
             lbl_email: "Email",
             lbl_address: "Address",
             lbl_banner: "Banner (Optional URL)",
+            lbl_banner_link: "Banner Link (Optional)",
             // How to
             how_title: "How it works?",
             how_step1: "Select a <b class='text-[#045973]'>template</b> from the sidebar.",
@@ -83,7 +88,8 @@
             admin_new: "New",
             admin_edit: "Edit",
             admin_dup: "Duplicate",
-            admin_del: "Delete"
+            admin_del: "Delete",
+            btn_force_update: "Update Now"
         }
     };
 
@@ -164,6 +170,8 @@
             .withSuccessHandler(onUserLoaded)
             .withFailureHandler(onLoadingError)
             .getUserProfile();
+
+        initAutoUpdateStatus();
     };
 
     function onLoadingError(error) {
@@ -248,7 +256,7 @@
     }
 
     function syncAdminButtons() {
-        if (!isAdminUser) return;
+        // if (!isAdminUser) return; // REMOVED: If buttons are in DOM, user is admin.
         const hasSelection = !!document.getElementById('template-select').value;
 
         const btns = ['btn-edit', 'btn-del', 'btn-dup'];
@@ -311,6 +319,7 @@
         };
 
         const bannerUrl = (document.getElementById('inp-banner').value || "").trim();
+        const bannerLink = (document.getElementById('inp-bannerLink').value || "").trim();
         let finalHtml = currentTemplateHtml;
 
         try {
@@ -319,7 +328,11 @@
             });
 
             if (bannerUrl) {
-                finalHtml += `<br><div style="margin-top:10px;"><img src="${bannerUrl}" style="max-width:100%; height:auto;"></div>`;
+                let imgHtml = `<img src="${bannerUrl}" style="max-width:100%; height:auto;">`;
+                if (bannerLink) {
+                    imgHtml = `<a href="${bannerLink}" target="_blank">${imgHtml}</a>`;
+                }
+                finalHtml += `<br><div style="margin-top:10px;">${imgHtml}</div>`;
             }
 
             document.getElementById('signature-preview').innerHTML = finalHtml;
@@ -360,6 +373,8 @@
             .updateSignature(htmlContent);
     }
 
+
+
     // --- ADMIN / EDIT MODAL ---
 
     function openAdminEdit(mode) {
@@ -372,11 +387,18 @@
             if (!selectVal) return M.toast({ html: "Veuillez sélectionner un modèle." });
 
             const tpl = templates.find(t => String(t.id) === String(selectVal));
-            htmlToLoad = tpl ? hydrateHtmlForEditor(tpl.html || "") : "";
+            if (!tpl) {
+                console.error("Template not found for ID:", selectVal);
+                return M.toast({ html: "Erreur : Modèle introuvable." });
+            }
 
+            // 1. Fill inputs FIRST so resolveLogoForEditor() sees the correct values
             document.getElementById('edit-id').value = tpl.id;
             document.getElementById('edit-name').value = tpl.name || "";
             document.getElementById('edit-logoUrl').value = tpl.logoUrl || DEFAULT_LOGO_URL;
+
+            // 2. Hydrate HTML (uses the values we just set)
+            htmlToLoad = hydrateHtmlForEditor(tpl.html || "");
 
         } else {
             // NEW
@@ -444,6 +466,47 @@
                 btn.classList.remove('disabled');
             })
             .saveTemplate(id, name, html, logoUrl);
+    }
+
+    function onAutoUpdateChange() {
+        const toggle = document.getElementById('switch-auto-update');
+        const enable = toggle.checked;
+
+        // Visual feedback immediately? 
+        // Better to wait for server or just let it stay content-agnostic?
+        // Let's assume optimist UI but revert if fail.
+
+        const statusMsg = enable ? "Activation auto-update..." : "Désactivation auto-update...";
+        M.toast({ html: statusMsg, classes: 'rounded' });
+
+        google.script.run
+            .withSuccessHandler(serverResult => {
+                console.log("toggleAutoUpdate result: " + serverResult);
+                const msg = serverResult ? "Mise à jour automatique ACTIVÉE (2h du matin)" : "Mise à jour automatique DÉSACTIVÉE";
+                M.toast({ html: msg, classes: enable ? 'green' : 'grey' });
+                // Force sync state just in case
+                toggle.checked = serverResult;
+            })
+            .withFailureHandler(err => {
+                console.error("toggleAutoUpdate FAILED", err);
+                M.toast({ html: "Erreur:Impossible de modifier le paramètre.", classes: 'red' });
+                // Revert switch
+                toggle.checked = !enable;
+            })
+            .toggleAutoUpdate(enable);
+    }
+
+    function initAutoUpdateStatus() {
+        console.log("Checking auto-update status...");
+        google.script.run
+            .withSuccessHandler(active => {
+                console.log("Auto-update active? " + active);
+                document.getElementById('switch-auto-update').checked = active;
+            })
+            .withFailureHandler(err => {
+                console.error("Error checking auto-update", err);
+            })
+            .getAutoUpdateStatus();
     }
 
     function deleteCurrentTemplate() {

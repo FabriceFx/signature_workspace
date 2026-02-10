@@ -5,10 +5,9 @@
  */
 
 // 1. LISTE DES ADMINISTRATEURS
-// Seuls ces emails auront accès aux fonctions de création/modification de modèles.
-const ADMIN_EMAILS = [
-  'admin@example.com' // À REMPLACER PAR L'EMAIL DE L'ADMINISTRATEUR
-];
+// Géré dynamiquement via les Propriétés du Script (Fichier > Propriétés du projet > Propriétés du script)
+// Clé: 'ADMIN_EMAILS', Valeur: 'email1,email2'
+// Si vide, le premier utilisateur à lancer l'app devient admin (fallback).
 
 // 2. LOGO PAR DÉFAUT
 // Utilisé si l'utilisateur n'a pas de logo spécifique défini dans le modèle ou son profil.

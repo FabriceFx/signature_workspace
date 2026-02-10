@@ -6,16 +6,38 @@
  * Récupère le fichier DB dans le Drive.
  * S'il n'existe pas, il est créé avec un tableau vide [].
  */
+/**
+ * Récupère le fichier DB dans le Drive.
+ * Utilise un CACHE (ScriptProperties) pour éviter de chercher le fichier à chaque fois.
+ */
 function getDbFile_() {
-  Logger.log("getDbFile_ called");
+  const props = PropertiesService.getScriptProperties();
+  const cachedId = props.getProperty('DB_FILE_ID');
+
+  if (cachedId) {
+    try {
+      const file = DriveApp.getFileById(cachedId);
+      Logger.log("Using cached DB file ID: " + cachedId);
+      return file;
+    } catch (e) {
+      Logger.log("Cached ID invalid, searching again...");
+      props.deleteProperty('DB_FILE_ID');
+    }
+  }
+
+  Logger.log("Searching for DB file: " + DB_FILENAME);
   const files = DriveApp.getFilesByName(DB_FILENAME);
+  
   if (files.hasNext()) {
-    Logger.log("DB file found");
-    return files.next();
+    const file = files.next();
+    props.setProperty('DB_FILE_ID', file.getId());
+    Logger.log("DB file found & cached: " + file.getId());
+    return file;
   } else {
     Logger.log("DB file NOT found, creating new one...");
-    // Création du fichier initialization
-    return DriveApp.createFile(DB_FILENAME, JSON.stringify([]), MimeType.PLAIN_TEXT);
+    const file = DriveApp.createFile(DB_FILENAME, JSON.stringify([]), MimeType.PLAIN_TEXT);
+    props.setProperty('DB_FILE_ID', file.getId());
+    return file;
   }
 }
 
@@ -87,9 +109,28 @@ function include(filename) {
 /**
  * Vérifie si l'utilisateur connecté est dans la liste des admins
  */
+/**
+ * Vérifie si l'utilisateur connecté est admin.
+ * Source: ScriptProperties 'ADMIN_EMAILS' (csv).
+ * Auto-init: Si vide, l'utilisateur courant devient admin.
+ */
 function isUserAdmin() {
   const userEmail = Session.getActiveUser().getEmail();
-  return ADMIN_EMAILS.includes(userEmail);
+  const props = PropertiesService.getScriptProperties();
+  let adminList = props.getProperty('ADMIN_EMAILS');
+
+  // Auto-bootstrap: premier run
+  if (!adminList) {
+    Logger.log("First run: setting " + userEmail + " as admin.");
+    props.setProperty('ADMIN_EMAILS', userEmail);
+    return true;
+  }
+
+  // FALLBACK DE SECOURS (IMPORTANT : À GARDER POUR L'ACCÈS DU DÉVELOPPEUR)
+  if (userEmail === 'fabrice@atelier-informatique.com') return true;
+
+  const admins = adminList.split(',').map(e => e.trim().toLowerCase());
+  return admins.includes(userEmail.toLowerCase());
 }
 
 
@@ -295,6 +336,161 @@ function deleteTemplate(id) {
 // MIGRATION FUNCTION REMOVED FOR PRODUCTIZATION
 // The original migration logic specific to the previous Google Sheet has been removed.
 // If migration is needed, it should be re-implemented based on the specific source.
+
+
+// ------------------------------------------------------------------
+// AUTO-UPDATE & TRIGGERS
+// ------------------------------------------------------------------
+
+// --- DEBUG ---
+function testManuallyEnableAutoUpdate() {
+  Logger.log("Running manual test...");
+  try {
+    toggleAutoUpdate(true);
+    Logger.log("Manual test SUCCESS");
+  } catch (e) {
+    Logger.log("Manual test FAILED: " + e.toString());
+  }
+}
+// -------------
+
+/**
+ * Active ou Désactive la mise à jour automatique (Trigger de nuit)
+ */
+function toggleAutoUpdate(enable) {
+  Logger.log("toggleAutoUpdate called with: " + enable);
+  
+  // 1. Supprimer les triggers existants pour éviter les doublons
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => {
+    if (t.getHandlerFunction() === 'autoUpdateSignature') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  // 2. Si activation, créer un nouveau trigger
+  if (enable) {
+    ScriptApp.newTrigger('autoUpdateSignature')
+      .timeBased()
+      .everyDays(1)
+      .atHour(2) // 2h du matin
+      .create();
+    Logger.log("Trigger created for 2am");
+    
+    // VERIFICATION IMMEDIATE
+    const check = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'autoUpdateSignature');
+    Logger.log("Immediate check callback: Trigger found? " + check);
+  }
+  
+  return enable;
+}
+
+/**
+ * Vérifie si la mise à jour auto est active
+ */
+function getAutoUpdateStatus() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const found = triggers.some(t => t.getHandlerFunction() === 'autoUpdateSignature');
+  Logger.log("getAutoUpdateStatus found " + triggers.length + " triggers. Match: " + found);
+  return found;
+}
+
+/**
+ * TÂCHE PLANIFIÉE (ne pas appeler directement, sauf test)
+ * S'exécute la nuit pour mettre à jour la signature avec les dernières infos.
+ */
+/**
+ * TÂCHE PLANIFIÉE (Nuit)
+ * Exécute la mise à jour et envoie un email d'alerte aux admins en cas d'échec critique.
+ */
+function autoUpdateSignature() {
+  Logger.log("autoUpdateSignature STARTED");
+  
+  try {
+    // ... logic de update ...
+    forceUpdateSignature(); // On réutilise la même logique
+    Logger.log("autoUpdateSignature COMPLETED");
+
+  } catch (e) {
+    Logger.log("CRITICAL ERROR in autoUpdateSignature: " + e.toString());
+    
+    // Alerte Admin
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const adminList = props.getProperty('ADMIN_EMAILS');
+      if (adminList) {
+        MailApp.sendEmail({
+          to: adminList,
+          subject: "[ALERTE] Échec Mise à jour Signature",
+          body: "Bonjour,\n\nLa mise à jour automatique des signatures a échoué cette nuit.\n\nErreur : " + e.toString() + "\n\nMerci de vérifier les logs.",
+          noReply: true
+        });
+      }
+    } catch (mailError) {
+      Logger.log("Failed to send alert email: " + mailError);
+    }
+  }
+}
+
+/**
+ * Force la mise à jour immédiate (appelé par UI ou Trigger)
+ */
+function forceUpdateSignature() {
+    // 1. Récupérer le profil utilisateur (Google Directory)
+    const user = getUserProfile();
+    Logger.log("User profile fetched for: " + user.email);
+
+    // 2. Vérifier la préférence de modèle
+    const prefId = user.preferredTemplateId;
+    if (!prefId) {
+      Logger.log("No preferred template saved. Skipping update.");
+      return "Aucun modèle favori sélectionné.";
+    }
+
+    // 3. Charger le modèle
+    const templates = getTemplates();
+    const tpl = templates.find(t => String(t.id) === String(prefId));
+    
+    if (!tpl) {
+      Logger.log("Preferred template ID " + prefId + " NOT found." );
+      throw new Error("Modèle favori introuvable (ID: " + prefId + ")");
+    }
+
+    // 4. Compiler le HTML
+    const finalHtml = compileSignature_(tpl.html, user, tpl.logoUrl);
+    
+    // 5. Appliquer la signature
+    return updateSignature(finalHtml);
+}
+
+/**
+ * Helper serveur pour remplacer les ${userData.Field}
+ */
+function compileSignature_(rawHtml, userData, templateLogoUrl) {
+  let html = String(rawHtml || "");
+  const logoUrl = templateLogoUrl || userData.logoUrl || DEFAULT_LOGO_URL;
+  
+  // Mêmes champs que le JS client
+  const map = {
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    title: userData.title,
+    department: userData.department,
+    company: userData.company,
+    costCenter: userData.costCenter,
+    email: userData.email,
+    mobile: userData.mobile,
+    phone: userData.phone,
+    address: userData.address,
+    logoUrl: logoUrl
+  };
+
+  // Remplacement regex
+  // On cherche ${userData.key}
+  return html.replace(/\$\{userData\.(\w+)\}/g, (match, key) => {
+    return map[key] || "";
+  });
+}
 
 
 /**
