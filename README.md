@@ -1,5 +1,14 @@
 # Générateur de Signature Email (Google Workspace)
 
+
+[🇫🇷 Version Française](#-version-française) | [🇬🇧 English Version](#-english-version)
+<a href="https://developers.google.com/apps-script"><img src="https://img.shields.io/badge/Google%20Apps%20Script-4285F4?style=for-the-badge&logo=google-apps-script&logoColor=white" alt="Google Apps Script"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-indigo?style=for-the-badge" alt="License: MIT"></a>
+<a href="README.md"><img src="https://img.shields.io/badge/Status-Production-brightgreen?style=for-the-badge" alt="Status: Production"></a>
+
+
+## 🇫🇷 Version Française
+
 Une application web hébergée sur Apps Script pour permettre aux utilisateurs de votre domaine de générer et d'appliquer automatiquement leur signature Gmail uniformisée.
 
 ## Fonctionnalités
@@ -49,3 +58,12 @@ Une application web hébergée sur Apps Script pour permettre aux utilisateurs d
 ## Limitations
 
 *   **Alias Gmail** : En raison des restrictions de sécurité Google, le script ne peut mettre à jour que la signature de l'adresse principale et des alias "simples". Les alias liés à des comptes de service ou des groupes peuvent échouer (un message d'avertissement sera affiché).
+
+
+---
+## 🇬🇧 English Version
+
+> English translation coming soon.
+
+---
+<p align="center"><a href="https://faucheux.bzh" target="_blank" style="color: inherit; text-decoration: none;">&lt;&gt; par Fabrice Faucheux</a></p>
